@@ -4,6 +4,10 @@ services:
       context: ./drsmith-backend
     env_file:
       - ./drsmith-backend/.env
+    # 若 .env 不存在，可用 environment 直接写（不推荐，敏感信息会暴露）
+    # environment:
+    #   - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY}
+    #   - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
     command: gunicorn myblog.wsgi:application --bind 0.0.0.0:8000 --workers 3
     ports:
       - "BACKEND_HOST_PORT:8000"
@@ -14,6 +18,9 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        # 从 backend .env 或环境变量读取，构建时注入前端
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
     ports:
       - "8080:80"
     restart: unless-stopped

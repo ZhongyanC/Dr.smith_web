@@ -30,6 +30,9 @@ drsmith-backend/venv/
 .env
 .env.*
 drsmith-backend/.env
+# 保留示例文件供部署参考
+!.env.example
+!drsmith-backend/.env.example
 
 # Django 静态与媒体（如由 collectstatic / 运行时生成）
 staticfiles/

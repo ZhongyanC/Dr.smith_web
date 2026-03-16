@@ -50,6 +50,27 @@ if [[ ! -f docker-compose.yml ]]; then
   exit 1
 fi
 
+# 检查 backend .env，不存在则从 example 创建并提示
+BACKEND_ENV="${PROJECT_DIR}/drsmith-backend/.env"
+if [[ ! -f "${BACKEND_ENV}" ]]; then
+  if [[ -f "${PROJECT_DIR}/drsmith-backend/.env.example" ]]; then
+    cp "${PROJECT_DIR}/drsmith-backend/.env.example" "${BACKEND_ENV}"
+    echo "已从 .env.example 创建 drsmith-backend/.env，请编辑后重新运行部署"
+    echo "  nano ${BACKEND_ENV}"
+    exit 1
+  else
+    echo "错误: drsmith-backend/.env 不存在，请创建并填入 TURNSTILE_SITE_KEY、TURNSTILE_SECRET_KEY"
+    exit 1
+  fi
+fi
+
+# 从 backend .env 导出 VITE_TURNSTILE_SITE_KEY 供 frontend 构建使用
+set -a
+source "${BACKEND_ENV}" 2>/dev/null || true
+# 若 .env 无 VITE_ 则用 TURNSTILE_SITE_KEY
+export VITE_TURNSTILE_SITE_KEY="${VITE_TURNSTILE_SITE_KEY:-$TURNSTILE_SITE_KEY}"
+set +a
+
 BACKEND_PORT=$(/bin/bash "${PROJECT_DIR}/scripts/choose_port.sh" "${START_PORT}" "${END_PORT}")
 echo "Selected backend host port: ${BACKEND_PORT}"
 
