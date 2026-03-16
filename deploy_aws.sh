@@ -96,6 +96,8 @@ for PLUGIN_DIR in /usr/lib/docker/cli-plugins /usr/local/lib/docker/cli-plugins;
   fi
 done
 
+fi
+
 mkdir -p "${PROJECT_DIR}"
 
 cd "${PROJECT_DIR}"
