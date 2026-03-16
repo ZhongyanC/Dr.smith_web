@@ -133,7 +133,8 @@ fi
 
 # 获取 backend 端口（用于 nginx 配置）
 if [[ "$UPDATE_NGINX_ONLY" == "true" ]]; then
-  BACKEND_PORT=$(grep -oP '\d+(?=:8000)' "${PROJECT_DIR}/docker-compose.yml" 2>/dev/null | head -1 || echo "8000")
+  BACKEND_PORT=$(grep -E '"[0-9]+:8000"' "${PROJECT_DIR}/docker-compose.yml" 2>/dev/null | grep -oE '[0-9]+' | head -1)
+  [[ -z "$BACKEND_PORT" || "$BACKEND_PORT" == "0" ]] && BACKEND_PORT="8000"
 else
   BACKEND_PORT=$(/bin/bash "${PROJECT_DIR}/scripts/choose_port.sh" "${START_PORT}" "${END_PORT}")
   sed -i "s/BACKEND_HOST_PORT/${BACKEND_PORT}/g" "${PROJECT_DIR}/docker-compose.yml"
