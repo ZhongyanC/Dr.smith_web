@@ -177,15 +177,22 @@ cd "${PROJECT_DIR}"
 if command -v docker-compose &>/dev/null && docker-compose version &>/dev/null; then
   docker-compose build
   docker-compose up -d
+  # 运行数据库迁移，保证 auth_user 等表存在
+  docker-compose exec backend python manage.py migrate --noinput || docker-compose run --rm backend python manage.py migrate --noinput
 elif docker compose version &>/dev/null; then
   docker compose build
   docker compose up -d
+  docker compose exec backend python manage.py migrate --noinput || docker compose run --rm backend python manage.py migrate --noinput
 else
   echo "错误: 未找到 docker-compose 或 docker compose"
   exit 1
 fi
 
-certbot --nginx -d "${DOMAIN}" --non-interactive --agree-tos -m "${EMAIL}" --redirect 2>/dev/null || true
+certbot --nginx \
+  -d "${DOMAIN}" \
+  -d "www.${DOMAIN}" \
+  --expand \
+  --non-interactive --agree-tos -m "${EMAIL}" --redirect 2>/dev/null || true
 
 echo "Deployment finished. Please check https://${DOMAIN}"
 
