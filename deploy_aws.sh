@@ -8,6 +8,8 @@ EMAIL="zycao@ku.edu"
 START_PORT=8000
 END_PORT=9000
 
+UPDATE_NGINX_ONLY=false
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --project-dir)
@@ -22,6 +24,10 @@ while [[ $# -gt 0 ]]; do
       EMAIL="$2"
       shift 2
       ;;
+    --update-nginx-only)
+      UPDATE_NGINX_ONLY=true
+      shift
+      ;;
     *)
       echo "Unknown argument: $1"
       exit 1
@@ -35,7 +41,10 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 echo "Using PROJECT_DIR=${PROJECT_DIR}, DOMAIN=${DOMAIN}, EMAIL=${EMAIL}"
+[[ "$UPDATE_NGINX_ONLY" == "true" ]] && echo "模式: 仅更新 nginx 配置"
 
+# 仅更新 nginx 时跳过安装和构建
+if [[ "$UPDATE_NGINX_ONLY" != "true" ]]; then
 # 根据系统选择包管理器（Amazon Linux 用 yum/dnf，Ubuntu 用 apt）
 if command -v apt-get &>/dev/null; then
   apt-get update
@@ -96,6 +105,8 @@ if [[ ! -f docker-compose.yml ]]; then
   exit 1
 fi
 
+# 仅更新 nginx 时跳过 env 检查
+if [[ "$UPDATE_NGINX_ONLY" != "true" ]]; then
 # 检查 backend .env，不存在则从 example 创建并提示
 BACKEND_ENV="${PROJECT_DIR}/drsmith-backend/.env"
 if [[ ! -f "${BACKEND_ENV}" ]]; then
@@ -116,11 +127,16 @@ source "${BACKEND_ENV}" 2>/dev/null || true
 # 若 .env 无 VITE_ 则用 TURNSTILE_SITE_KEY
 export VITE_TURNSTILE_SITE_KEY="${VITE_TURNSTILE_SITE_KEY:-$TURNSTILE_SITE_KEY}"
 set +a
+fi
 
-BACKEND_PORT=$(/bin/bash "${PROJECT_DIR}/scripts/choose_port.sh" "${START_PORT}" "${END_PORT}")
-echo "Selected backend host port: ${BACKEND_PORT}"
-
-sed -i "s/BACKEND_HOST_PORT/${BACKEND_PORT}/g" "${PROJECT_DIR}/docker-compose.yml"
+# 获取 backend 端口（用于 nginx 配置）
+if [[ "$UPDATE_NGINX_ONLY" == "true" ]]; then
+  BACKEND_PORT=$(grep -oP '\d+(?=:8000)' "${PROJECT_DIR}/docker-compose.yml" 2>/dev/null | head -1 || echo "8000")
+else
+  BACKEND_PORT=$(/bin/bash "${PROJECT_DIR}/scripts/choose_port.sh" "${START_PORT}" "${END_PORT}")
+  sed -i "s/BACKEND_HOST_PORT/${BACKEND_PORT}/g" "${PROJECT_DIR}/docker-compose.yml"
+fi
+echo "Backend port: ${BACKEND_PORT}"
 
 NGINX_TEMPLATE="${PROJECT_DIR}/nginx_site_template.conf"
 
@@ -148,13 +164,22 @@ nginx -t
 systemctl enable nginx 2>/dev/null || true
 systemctl is-active --quiet nginx && systemctl reload nginx || systemctl start nginx
 
+if [[ "$UPDATE_NGINX_ONLY" == "true" ]]; then
+  echo "Nginx 配置已更新并重载"
+  exit 0
+fi
+
 cd "${PROJECT_DIR}"
-if docker compose version &>/dev/null; then
+# 优先使用 docker-compose（EC2 等环境常用），其次 docker compose 插件
+if command -v docker-compose &>/dev/null && docker-compose version &>/dev/null; then
+  docker-compose build
+  docker-compose up -d
+elif docker compose version &>/dev/null; then
   docker compose build
   docker compose up -d
 else
-  docker-compose build
-  docker-compose up -d
+  echo "错误: 未找到 docker-compose 或 docker compose"
+  exit 1
 fi
 
 certbot --nginx -d "${DOMAIN}" --non-interactive --agree-tos -m "${EMAIL}" --redirect 2>/dev/null || true
