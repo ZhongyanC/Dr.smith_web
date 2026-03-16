@@ -1,0 +1,6 @@
+{# templates/django_comments_xtd/comment_tree.html #}
+<ul class="space-y-4">
+  {% for node in comments %}
+    {% include "django_comments_xtd/comment.html" with node=node post=post %}
+  {% endfor %}
+</ul>

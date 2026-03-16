@@ -1,0 +1,58 @@
+# ---- 通用 ----
+.DS_Store
+.cursor/
+
+# ---- IDE / 编辑器 ----
+.idea/
+.vscode/
+*.code-workspace
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+Thumbs.db
+
+# ---- Python / Django 后端 ----
+**/__pycache__/
+**/*.py[cod]
+*.sqlite3
+db.sqlite3
+
+# 虚拟环境
+venv/
+.venv/
+drsmith-backend/venv/
+**/env/
+**/ENV/
+
+# 环境与密钥文件
+.env
+.env.*
+drsmith-backend/.env
+
+# Django 静态与媒体（如由 collectstatic / 运行时生成）
+staticfiles/
+static/
+media/
+
+# ---- Node / 前端 (Vite + React) ----
+**/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.eslintcache
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# 前端环境变量
+frontend/.env
+frontend/.env.*
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.production.local
+frontend/.env.test.local
+
+# ---- Docker / 部署相关 ----
+*.pid
+*.pid.lock

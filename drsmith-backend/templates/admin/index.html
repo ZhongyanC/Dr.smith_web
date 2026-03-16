@@ -1,0 +1,47 @@
+{% extends "admin/index.html" %}
+{% load static %}
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css\admin_custom.css' %}?v=20251107">
+{% endblock %}
+
+{% block content %}
+  <!-- Quick Actions -->
+  <section class="quick-actions">
+    <!-- Blog : New Post -->
+    <a class="qa-card qa-blue" href="{% url 'admin:blog_post_add' %}" aria-label="Create a new blog post">
+      <div class="qa-title">📝 New Post</div>
+      <div class="qa-sub">Create a blog post</div>
+    </a>
+
+    <!-- Blog : Manage Posts -->
+    <a class="qa-card qa-blue" href="{% url 'admin:blog_post_changelist' %}" aria-label="Manage blog posts">
+      <div class="qa-title">📚 Manage Posts</div>
+      <div class="qa-sub">Search • Filter • Bulk actions</div>
+    </a>
+
+    <!-- Comments -->
+    <a class="qa-card qa-gray" href="{% url 'admin:django_comments_xtd_xtdcomment_changelist' %}" aria-label="Moderate comments">
+      <div class="qa-title">💬 Manage Comments</div>
+      <div class="qa-sub">Moderate • Reply • Delete</div>
+    </a>
+
+    <!-- Events : New Event -->
+    <a class="qa-card qa-green" href="{% url 'admin:event_event_add' %}" aria-label="Create a new event">
+      <div class="qa-title">🎹 New Event</div>
+      <div class="qa-sub">Create an event</div>
+    </a>
+
+    <!-- Events : Manage Events -->
+    <a class="qa-card qa-green" href="{% url 'admin:event_event_changelist' %}" aria-label="Manage events">
+      <div class="qa-title">📅 Manage Events</div>
+      <div class="qa-sub">Search • Filter • Bulk actions</div>
+    </a>
+    <!-- Back -->
+    <a class="qa-card qa-green" href="/" aria-label="Manage events">
+      <div class="qa-title">◀️ Back to Home</div>
+      <!-- <div class="qa-sub"></div> -->
+    </a>
+  </section>
+  {{ block.super }}  {# 保留默认 app 列表 #}
+{% endblock %}

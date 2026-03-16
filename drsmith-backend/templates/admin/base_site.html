@@ -1,0 +1,83 @@
+{# templates/admin/base_site.html #}
+{% extends "admin/base.html" %}
+{% load static %}
+
+{# 仍保留 extrastyle（可选，用于非覆盖性的早期样式） #}
+{% block extrastyle %}
+  {{ block.super }}
+{% endblock %}
+
+{# 关键：在 extrahead 里把自定义 CSS 放到最后 #}
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/admin_custom.css' %}?v=20251107">
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const tbl = document.querySelector('.change-list .results table');
+    if (!tbl) return;
+
+    const heads = Array.from(tbl.querySelectorAll('thead th')).map(th =>
+        (th.innerText || th.textContent || '').trim().replace(/\s+/g,' ')
+    );
+
+    tbl.querySelectorAll('tbody tr').forEach(tr => {
+        Array.from(tr.children).forEach((cell, i) => {
+        if (cell.classList.contains('action-checkbox')) return; // 勾选框列不要标题
+        if (!cell.hasAttribute('data-label')) cell.setAttribute('data-label', heads[i] || '');
+        });
+    });
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+    const table = document.querySelector('.change-list .results table');
+    if (!table) return;
+
+    const master = document.getElementById('action-toggle');
+    if (master) master.classList.add('pretty-check');
+
+    table.querySelectorAll('tbody tr').forEach(tr => {
+        tr.classList.add('selectable-card');
+        const cb = tr.querySelector('td.action-checkbox input[type="checkbox"]');
+        if (!cb) return;
+        cb.classList.add('pretty-check');
+
+        // 点击空白处选中整行
+        tr.addEventListener('click', e => {
+        if (e.target.closest('a, button, input, label, select, textarea')) return;
+        cb.checked = !cb.checked;
+        tr.classList.toggle('is-selected', cb.checked);
+        cb.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        cb.addEventListener('change', () => {
+        tr.classList.toggle('is-selected', cb.checked);
+        });
+    });
+
+    if (master) {
+        master.addEventListener('change', () => {
+        table.querySelectorAll('tbody tr').forEach(tr => {
+            const cb = tr.querySelector('td.action-checkbox input[type="checkbox"]');
+            if (!cb) return;
+            tr.classList.toggle('is-selected', cb.checked);
+        });
+        });
+    }
+
+    // 给 "Is published" 列复选框添加统一样式
+    table.querySelectorAll('td.field-is_published input[type="checkbox"]').forEach(box => {
+        box.classList.add('pretty-check');
+    });
+    });
+
+    </script>
+{% endblock %}
+
+{% block branding %}
+  <h1 id="site-name"><a href="{% url 'admin:index' %}">Dr.Smith Admin</a></h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+
+
