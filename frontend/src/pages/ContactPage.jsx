@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { submitContact } from '../api/contact'
+import { motion } from 'framer-motion'
+import { pageVariants, itemVariants } from '../utils/motion'
 
 export function ContactPage() {
   const [form, setForm] = useState({
@@ -91,9 +93,14 @@ export function ContactPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10 md:py-14">
-      <div className="grid gap-8 md:grid-cols-2">
-        <section className="space-y-4">
+    <motion.div
+      className="max-w-6xl mx-auto px-4 py-10 md:py-14"
+      variants={pageVariants}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div variants={itemVariants} className="grid gap-8 md:grid-cols-2">
+        <motion.section variants={itemVariants} className="space-y-4">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900 dark:text-slate-50">
             Contact Dr. Smith
           </h1>
@@ -129,9 +136,9 @@ export function ContactPage() {
               </p>
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <section>
+        <motion.section variants={itemVariants}>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-50 mb-4">
             Contact Form
           </h2>
@@ -220,9 +227,9 @@ export function ContactPage() {
               </button>
             </div>
           </form>
-        </section>
-      </div>
-    </div>
+        </motion.section>
+      </motion.div>
+    </motion.div>
   )
 }
 

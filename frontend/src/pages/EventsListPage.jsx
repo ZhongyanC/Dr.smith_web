@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchEventList } from '../api/events'
 import { FiSearch } from 'react-icons/fi'
+import { motion } from 'framer-motion'
+import { pageVariants, itemVariants, cardVariants, inViewOnce } from '../utils/motion'
 
 function formatEventDate(when) {
   const d = new Date(when)
@@ -15,10 +17,16 @@ function formatEventDate(when) {
 function EventCard({ event, isUpcoming }) {
   const { short, time } = formatEventDate(event.when)
   return (
-    <Link
+    <motion.div
+      variants={cardVariants}
+      initial="hidden"
+      whileInView="show"
+      viewport={inViewOnce}
+    >
+      <Link
       to={`/events/${event.slug}`}
       className="block group rounded-2xl border border-gray-200 shadow-sm overflow-hidden bg-white dark:border-slate-800 dark:bg-slate-900"
-    >
+      >
       {event.cover_url ? (
         <img
           src={event.cover_url}
@@ -48,7 +56,8 @@ function EventCard({ event, isUpcoming }) {
           <p className="text-gray-600 mt-1 text-sm line-clamp-2 dark:text-slate-300">{event.subtitle}</p>
         )}
       </div>
-    </Link>
+      </Link>
+    </motion.div>
   )
 }
 
@@ -87,24 +96,15 @@ export function EventsListPage() {
   const past = data?.past ?? []
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      <section className="space-y-6">
-        <section className="-mt-2">
+    <motion.div
+      className="max-w-6xl mx-auto px-4 py-6"
+      variants={pageVariants}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.section variants={itemVariants} className="space-y-6">
+        <motion.section variants={itemVariants} className="-mt-2">
           <div className="mb-4 space-y-3">
-            <div className="flex gap-2">
-              <a
-                href="#upcoming_event"
-                className="flex-1 text-center px-3 py-2 text-sm rounded-lg border border-slate-500 bg-slate-900 text-slate-50 hover:bg-slate-800 hover:border-slate-400"
-              >
-                Upcoming
-              </a>
-              <a
-                href="#past_event"
-                className="flex-1 text-center px-3 py-2 text-sm rounded-lg border border-slate-500 bg-slate-900 text-slate-50 hover:bg-slate-800 hover:border-slate-400"
-              >
-                Past
-              </a>
-            </div>
             <form
               onSubmit={(e) => {
                 e.preventDefault()
@@ -128,41 +128,57 @@ export function EventsListPage() {
                 <span>Search</span>
               </button>
             </form>
+            <div className="flex gap-2">
+              <a
+                href="#upcoming_event"
+                className="flex-1 text-center px-3 py-2 text-sm rounded-lg border border-slate-500 bg-slate-900 text-slate-50 hover:bg-slate-800 hover:border-slate-400"
+              >
+                Upcoming
+              </a>
+              <a
+                href="#past_event"
+                className="flex-1 text-center px-3 py-2 text-sm rounded-lg border border-slate-500 bg-slate-900 text-slate-50 hover:bg-slate-800 hover:border-slate-400"
+              >
+                Past
+              </a>
+            </div>
           </div>
-        </section>
+        </motion.section>
 
         {loading ? (
-          <p className="text-gray-500 dark:text-slate-400">Loading...</p>
+          <motion.p variants={itemVariants} className="text-gray-500 dark:text-slate-400">Loading...</motion.p>
         ) : !upcoming.length && !past.length && !searchQ ? null : (
           <>
             {upcoming.length > 0 && (
-              <section id="upcoming_event" className="scroll-mt-24">
+              <motion.section variants={itemVariants} id="upcoming_event" className="scroll-mt-24">
                 <h2 className="text-2xl font-semibold mb-3 text-gray-900 dark:text-slate-50">Upcoming</h2>
                 <div className="grid gap-6 md:grid-cols-2">
                   {upcoming.map((e) => (
                     <EventCard key={e.id} event={e} isUpcoming />
                   ))}
                 </div>
-              </section>
+              </motion.section>
             )}
 
             {past.length > 0 && (
-              <section id="past_event" className="scroll-mt-24 mt-10">
+              <motion.section variants={itemVariants} id="past_event" className="scroll-mt-24 mt-10">
                 <h2 className="text-2xl font-semibold mb-3 text-gray-900 dark:text-slate-50">Past</h2>
                 <div className="grid gap-6 md:grid-cols-2">
                   {past.map((e) => (
                     <EventCard key={e.id} event={e} isUpcoming={false} />
                   ))}
                 </div>
-              </section>
+              </motion.section>
             )}
 
             {!upcoming.length && !past.length && searchQ && (
-              <p className="text-gray-500 dark:text-slate-400">No events match this search.</p>
+              <motion.p variants={itemVariants} className="text-gray-500 dark:text-slate-400">
+                No events match this search.
+              </motion.p>
             )}
           </>
         )}
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   )
 }

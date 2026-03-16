@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { FiSearch, FiArrowLeft, FiArrowRight } from 'react-icons/fi'
 import { fetchPostList } from '../api/blog'
+import { motion } from 'framer-motion'
+import { pageVariants, itemVariants, cardVariants, inViewOnce } from '../utils/motion'
 
 function cleanText(html) {
   if (!html) return ''
@@ -71,13 +73,14 @@ export function BlogListPage() {
   const categories = data?.categories ?? []
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
+    <motion.div
+      className="max-w-6xl mx-auto px-4 py-6"
+      variants={pageVariants}
+      initial="hidden"
+      animate="show"
+    >
       {/* 顶部整行搜索区 */}
-      <section className="pb-6 border-b border-gray-200 dark:border-slate-800">
-        <h3 className="font-semibold mb-3 text-gray-800 dark:text-slate-100 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
-          <span>Search</span>
-        </h3>
+      <motion.section variants={itemVariants} className="pb-6 border-b border-gray-200 dark:border-slate-800">
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -102,11 +105,11 @@ export function BlogListPage() {
             <span>Search</span>
           </button>
         </form>
-      </section>
+      </motion.section>
 
-      <div className="grid md:grid-cols-12 gap-6 mt-6">
-        <aside className="md:col-span-3 space-y-8 md:pr-4 border-r border-gray-200 dark:border-slate-800">
-          <section className="pb-6">
+      <motion.div variants={itemVariants} className="grid md:grid-cols-12 gap-6 mt-6">
+        <motion.aside variants={itemVariants} className="md:col-span-3 space-y-8 md:pr-4 border-r border-gray-200 dark:border-slate-800">
+          <motion.section variants={itemVariants} className="pb-6">
             <h3 className="font-semibold mb-3 text-gray-800 dark:text-slate-100 flex items-center gap-2">
               <span className="w-1.5 h-1.5 bg-blue-600 rounded-full" /> Categories
             </h3>
@@ -125,7 +128,7 @@ export function BlogListPage() {
                 </button>
               </li>
               {categories.map((c) => (
-                <li key={c.slug}>
+                <motion.li key={c.slug} variants={itemVariants}>
                   <button
                     type="button"
                     onClick={() => updateParams({ category: c.slug })}
@@ -137,22 +140,29 @@ export function BlogListPage() {
                   >
                     {c.name}
                   </button>
-                </li>
+                </motion.li>
               ))}
             </ul>
-          </section>
-        </aside>
+          </motion.section>
+        </motion.aside>
 
-        <section className="md:col-span-9">
+        <motion.section variants={itemVariants} className="md:col-span-9">
           {posts.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 dark:border-slate-800 dark:bg-black dark:text-slate-300">
+            <motion.div
+              variants={itemVariants}
+              className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 dark:border-slate-800 dark:bg-black dark:text-slate-300"
+            >
               No posts found.
-            </div>
+            </motion.div>
           ) : (
             <div className="space-y-5">
               {posts.map((p) => (
-                <article
+                <motion.article
                   key={p.id}
+                  variants={cardVariants}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={inViewOnce}
                   className="group rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden hover:shadow-md hover:border-gray-300 transition dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-slate-700"
                 >
                   <div className="flex flex-col md:flex-row">
@@ -210,7 +220,7 @@ export function BlogListPage() {
                       </div>
                     </div>
                   </div>
-                </article>
+                </motion.article>
               ))}
 
               {totalPages > 1 && (
@@ -256,8 +266,8 @@ export function BlogListPage() {
               )}
             </div>
           )}
-        </section>
-      </div>
-    </div>
+        </motion.section>
+      </motion.div>
+    </motion.div>
   )
 }
