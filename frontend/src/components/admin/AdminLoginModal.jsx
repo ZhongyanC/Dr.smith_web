@@ -7,12 +7,15 @@ export function AdminLoginModal({ open, onClose, onSuccess, position = 'center' 
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState(null)
   const firstInputRef = useRef(null)
+  const turnstileWidgetRef = useRef(null)
 
   useEffect(() => {
     if (!open) return
     setError('')
     setLoading(false)
+    setTurnstileToken(null)
     const t = setTimeout(() => firstInputRef.current?.focus(), 0)
     return () => clearTimeout(t)
   }, [open])
@@ -35,15 +38,94 @@ export function AdminLoginModal({ open, onClose, onSuccess, position = 'center' 
     }
   }, [open])
 
+  // Cloudflare Turnstile for admin login
+  useEffect(() => {
+    if (!open) return
+    const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
+    if (!siteKey) {
+      console.warn('VITE_TURNSTILE_SITE_KEY is not configured; Turnstile widget will not render.')
+      return
+    }
+    let attempts = 0
+    const maxAttempts = 20
+    const interval = setInterval(() => {
+      attempts += 1
+      if (!window.turnstile) {
+        if (attempts >= maxAttempts) clearInterval(interval)
+        return
+      }
+      const el = document.getElementById('cf-turnstile-admin-login')
+      if (!el) {
+        if (attempts >= maxAttempts) clearInterval(interval)
+        return
+      }
+      // 如果之前渲染过但 DOM 重新创建了（关闭再打开弹窗），需要重新 render
+      if (turnstileWidgetRef.current && el.childElementCount > 0) {
+        clearInterval(interval)
+        return
+      }
+      try {
+        // 清理旧 widget（若存在）
+        if (turnstileWidgetRef.current) {
+          try {
+            window.turnstile.remove(turnstileWidgetRef.current)
+          } catch {
+            // ignore
+          }
+          turnstileWidgetRef.current = null
+        }
+        turnstileWidgetRef.current = window.turnstile.render(el, {
+          sitekey: siteKey,
+          theme: 'auto',
+          callback: (token) => setTurnstileToken(token),
+          'error-callback': () => setTurnstileToken(null),
+          'expired-callback': () => setTurnstileToken(null),
+        })
+        clearInterval(interval)
+      } catch {
+        if (attempts >= maxAttempts) clearInterval(interval)
+      }
+    }, 200)
+    return () => clearInterval(interval)
+  }, [open])
+
+  // 关闭弹窗时清理 Turnstile widget，确保下次打开能重新渲染
+  useEffect(() => {
+    if (open) return
+    setTurnstileToken(null)
+    if (window.turnstile && turnstileWidgetRef.current) {
+      try {
+        window.turnstile.remove(turnstileWidgetRef.current)
+      } catch {
+        // ignore
+      }
+    }
+    turnstileWidgetRef.current = null
+  }, [open])
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      await login(username, password)
+      const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
+      if (siteKey && !turnstileToken) {
+        setError('Please complete the verification first.')
+        return
+      }
+      await login(username, password, turnstileToken)
       onSuccess?.()
     } catch (err) {
       setError(err.message || 'Login failed')
+      // 登录失败时让 Turnstile 重新可用（避免 token 已消费/失效）
+      setTurnstileToken(null)
+      if (window.turnstile && turnstileWidgetRef.current) {
+        try {
+          window.turnstile.reset(turnstileWidgetRef.current)
+        } catch {
+          // ignore
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -131,6 +213,10 @@ export function AdminLoginModal({ open, onClose, onSuccess, position = 'center' 
                 required
                 autoComplete="current-password"
               />
+            </div>
+
+            <div className="pt-1 flex justify-center">
+              <div id="cf-turnstile-admin-login" />
             </div>
 
             <button

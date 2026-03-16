@@ -4,10 +4,12 @@ from django.core.exceptions import ValidationError
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
+from django.conf import settings
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+import requests
 
 
 class AuthCsrfView(APIView):
@@ -24,11 +26,43 @@ class AuthLoginView(APIView):
     def post(self, request):
         username = request.data.get("username", "").strip()
         password = request.data.get("password", "")
+        token = (request.data.get("turnstile_token") or "").strip()
         if not username or not password:
             return Response(
                 {"detail": "username and password required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Require Turnstile if configured
+        secret = getattr(settings, "TURNSTILE_SECRET_KEY", "") or ""
+        if secret:
+            if not token:
+                return Response(
+                    {"detail": "Missing Turnstile token."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                verify_resp = requests.post(
+                    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+                    data={
+                        "secret": secret,
+                        "response": token,
+                        "remoteip": request.META.get("REMOTE_ADDR", ""),
+                    },
+                    timeout=5,
+                )
+                verify_data = verify_resp.json()
+            except Exception:
+                return Response(
+                    {"detail": "Failed to verify Turnstile token."},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+            if not verify_data.get("success"):
+                return Response(
+                    {"detail": "Turnstile verification failed."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         user = authenticate(request, username=username, password=password)
         if user is None:
             return Response(

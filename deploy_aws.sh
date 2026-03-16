@@ -129,6 +129,12 @@ source "${BACKEND_ENV}" 2>/dev/null || true
 # 若 .env 无 VITE_ 则用 TURNSTILE_SITE_KEY
 export VITE_TURNSTILE_SITE_KEY="${VITE_TURNSTILE_SITE_KEY:-$TURNSTILE_SITE_KEY}"
 set +a
+
+# 额外写入项目根目录 .env 供 docker-compose 读取（仅写 VITE_*，不写后端密钥）
+COMPOSE_ENV="${PROJECT_DIR}/.env"
+{
+  echo "VITE_TURNSTILE_SITE_KEY=${VITE_TURNSTILE_SITE_KEY:-}"
+} > "${COMPOSE_ENV}"
 fi
 
 # 获取 backend 端口（用于 nginx 配置）
@@ -175,12 +181,12 @@ fi
 cd "${PROJECT_DIR}"
 # 优先使用 docker-compose（EC2 等环境常用），其次 docker compose 插件
 if command -v docker-compose &>/dev/null && docker-compose version &>/dev/null; then
-  docker-compose build
+  VITE_TURNSTILE_SITE_KEY="${VITE_TURNSTILE_SITE_KEY:-}" docker-compose build
   docker-compose up -d
   # 运行数据库迁移，保证 auth_user 等表存在
   docker-compose exec backend python manage.py migrate --noinput || docker-compose run --rm backend python manage.py migrate --noinput
 elif docker compose version &>/dev/null; then
-  docker compose build
+  VITE_TURNSTILE_SITE_KEY="${VITE_TURNSTILE_SITE_KEY:-}" docker compose build
   docker compose up -d
   docker compose exec backend python manage.py migrate --noinput || docker compose run --rm backend python manage.py migrate --noinput
 else

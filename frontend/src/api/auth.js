@@ -12,7 +12,7 @@ export async function fetchCsrf() {
   return data.csrfToken
 }
 
-export async function login(username, password) {
+export async function login(username, password, turnstileToken) {
   let csrf = getCsrfToken()
   if (!csrf) {
     csrf = await fetchCsrf()
@@ -24,7 +24,7 @@ export async function login(username, password) {
       'X-CSRFToken': csrf,
     },
     credentials: 'include',
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, turnstile_token: turnstileToken }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.detail || 'Login failed')
