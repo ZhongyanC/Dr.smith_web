@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-PROJECT_DIR="/home/zyc-pc/drsmith-website"
+PROJECT_DIR="/home/ec2-user/Dr.smith_web"
 DOMAIN="scottmcbridesmith.com"
 EMAIL="zycao@ku.edu"
 START_PORT=8000
@@ -36,10 +36,56 @@ fi
 
 echo "Using PROJECT_DIR=${PROJECT_DIR}, DOMAIN=${DOMAIN}, EMAIL=${EMAIL}"
 
-apt-get update
-apt-get install -y curl git ufw nginx certbot python3-certbot-nginx docker.io docker-compose-plugin
+# 根据系统选择包管理器（Amazon Linux 用 yum/dnf，Ubuntu 用 apt）
+if command -v apt-get &>/dev/null; then
+  apt-get update
+  apt-get install -y curl git nginx certbot python3-certbot-nginx docker.io docker-compose-plugin
+elif command -v dnf &>/dev/null; then
+  dnf update -y
+  dnf install -y --allowerasing curl git nginx docker
+  dnf install -y --allowerasing certbot python3-certbot-nginx 2>/dev/null || true
+  if ! command -v certbot &>/dev/null; then
+    pip3 install certbot certbot-nginx 2>/dev/null || pip3 install --user certbot certbot-nginx 2>/dev/null || true
+  fi
+  if ! docker compose version &>/dev/null 2>&1; then
+    DCC="docker-compose-$(uname -s)-$(uname -m)"
+    curl -sL "https://github.com/docker/compose/releases/latest/download/${DCC}" -o /tmp/docker-compose
+    mv /tmp/docker-compose /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+  fi
+elif command -v yum &>/dev/null; then
+  yum update -y
+  yum install -y curl git nginx
+  amazon-linux-extras install docker -y 2>/dev/null || yum install -y docker 2>/dev/null || true
+  yum install -y certbot python3-certbot-nginx 2>/dev/null || true
+  if ! command -v certbot &>/dev/null; then
+    pip3 install certbot certbot-nginx 2>/dev/null || true
+  fi
+  if ! docker compose version &>/dev/null 2>&1; then
+    DCC="docker-compose-$(uname -s)-$(uname -m)"
+    curl -sL "https://github.com/docker/compose/releases/latest/download/${DCC}" -o /tmp/docker-compose
+    mv /tmp/docker-compose /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+  fi
+else
+  echo "错误: 未检测到 apt-get、dnf 或 yum，请手动安装 docker、nginx、certbot"
+  exit 1
+fi
 
 systemctl enable --now docker
+
+# 安装 buildx（docker compose build 需要 0.17.0+）
+BUILDX_VER="v0.18.0"
+ARCH=$(uname -m); [[ "$ARCH" == "x86_64" ]] && ARCH="amd64"; [[ "$ARCH" == "aarch64" ]] && ARCH="arm64"
+BUILDX_URL="https://github.com/docker/buildx/releases/download/${BUILDX_VER}/buildx-${BUILDX_VER}.linux-${ARCH}"
+for PLUGIN_DIR in /usr/lib/docker/cli-plugins /usr/local/lib/docker/cli-plugins; do
+  mkdir -p "$PLUGIN_DIR" 2>/dev/null
+  if curl -sLf "${BUILDX_URL}" -o "${PLUGIN_DIR}/docker-buildx" 2>/dev/null; then
+    chmod +x "${PLUGIN_DIR}/docker-buildx"
+    echo "已安装 buildx 到 ${PLUGIN_DIR}"
+    break
+  fi
+done
 
 mkdir -p "${PROJECT_DIR}"
 
@@ -76,8 +122,15 @@ echo "Selected backend host port: ${BACKEND_PORT}"
 
 sed -i "s/BACKEND_HOST_PORT/${BACKEND_PORT}/g" "${PROJECT_DIR}/docker-compose.yml"
 
-NGINX_CONF="/etc/nginx/sites-available/${DOMAIN}"
 NGINX_TEMPLATE="${PROJECT_DIR}/nginx_site_template.conf"
+
+# Amazon Linux 用 conf.d，Ubuntu 用 sites-available
+if [[ -d /etc/nginx/conf.d ]]; then
+  NGINX_CONF="/etc/nginx/conf.d/${DOMAIN}.conf"
+else
+  mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+  NGINX_CONF="/etc/nginx/sites-available/${DOMAIN}"
+fi
 
 mkdir -p /var/www/certbot
 
@@ -85,19 +138,26 @@ cp "${NGINX_TEMPLATE}" "${NGINX_CONF}"
 sed -i "s/scottmcbridesmith.com/${DOMAIN}/g" "${NGINX_CONF}"
 sed -i "s/BACKEND_HOST_PORT_PLACEHOLDER/${BACKEND_PORT}/g" "${NGINX_CONF}"
 
-ln -sf "${NGINX_CONF}" "/etc/nginx/sites-enabled/${DOMAIN}"
-if [[ -f /etc/nginx/sites-enabled/default ]]; then
-  rm /etc/nginx/sites-enabled/default
+# 仅 Ubuntu 风格需要 symlink
+if [[ -d /etc/nginx/sites-enabled ]]; then
+  ln -sf "${NGINX_CONF}" "/etc/nginx/sites-enabled/${DOMAIN}"
+  [[ -f /etc/nginx/sites-enabled/default ]] && rm -f /etc/nginx/sites-enabled/default
 fi
 
 nginx -t
-systemctl reload nginx
+systemctl enable nginx 2>/dev/null || true
+systemctl is-active --quiet nginx && systemctl reload nginx || systemctl start nginx
 
 cd "${PROJECT_DIR}"
-docker compose build
-docker compose up -d
+if docker compose version &>/dev/null; then
+  docker compose build
+  docker compose up -d
+else
+  docker-compose build
+  docker-compose up -d
+fi
 
-certbot --nginx -d "${DOMAIN}" --non-interactive --agree-tos -m "${EMAIL}" --redirect || true
+certbot --nginx -d "${DOMAIN}" --non-interactive --agree-tos -m "${EMAIL}" --redirect 2>/dev/null || true
 
 echo "Deployment finished. Please check https://${DOMAIN}"
 
