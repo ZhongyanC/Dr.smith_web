@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { FiSearch, FiArrowLeft, FiArrowRight } from 'react-icons/fi'
+import { FiSearch, FiArrowLeft, FiArrowRight, FiChevronDown } from 'react-icons/fi'
 import { fetchPostList } from '../api/blog'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants, itemVariants, cardVariants, inViewOnce } from '../utils/motion'
 
 function cleanText(html) {
@@ -17,6 +17,7 @@ export function BlogListPage() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [categoriesOpen, setCategoriesOpen] = useState(false)
 
   const page = parseInt(searchParams.get('page') || '1', 10)
   const q = searchParams.get('q') || ''
@@ -72,6 +73,39 @@ export function BlogListPage() {
   const currentPage = paginator.number ?? page
   const categories = data?.categories ?? []
 
+  const renderCategoriesList = () => (
+    <ul className="space-y-2">
+      <li>
+        <button
+          type="button"
+          onClick={() => updateParams({ category: '' })}
+          className={`block w-full text-center text-sm font-medium rounded-lg border px-3 py-2 transition-all ${
+            !category
+              ? 'bg-gray-900 text-white border-gray-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100'
+              : 'text-gray-700 border-gray-300 hover:bg-gray-100 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-800'
+          }`}
+        >
+          All
+        </button>
+      </li>
+      {categories.map((c) => (
+        <motion.li key={c.slug} variants={itemVariants}>
+          <button
+            type="button"
+            onClick={() => updateParams({ category: c.slug })}
+            className={`block w-full text-center text-sm font-medium rounded-lg border px-3 py-2 transition-all ${
+              category === c.slug
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'text-gray-700 border-gray-300 hover:bg-gray-100 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-800'
+            }`}
+          >
+            {c.name}
+          </button>
+        </motion.li>
+      ))}
+    </ul>
+  )
+
   return (
     <motion.div
       className="max-w-6xl mx-auto px-4 py-6"
@@ -80,7 +114,7 @@ export function BlogListPage() {
       animate="show"
     >
       {/* 顶部整行搜索区 */}
-      <motion.section variants={itemVariants} className="pb-6 border-b border-gray-200 dark:border-slate-800">
+      <motion.section variants={itemVariants} className="md:pb-6">
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -107,47 +141,52 @@ export function BlogListPage() {
         </form>
       </motion.section>
 
-      <motion.div variants={itemVariants} className="grid md:grid-cols-12 gap-6 mt-6">
-        <motion.aside variants={itemVariants} className="md:col-span-3 space-y-8 md:pr-4 border-r border-gray-200 dark:border-slate-800">
+      <motion.div variants={itemVariants} className="grid md:grid-cols-12 gap-6 mt-4 md:mt-6">
+        <motion.aside variants={itemVariants} className="md:col-span-3 space-y-8 md:pr-4 md:border-r border-gray-200 dark:border-slate-800">
           <motion.section variants={itemVariants} className="pb-6">
-            <h3 className="font-semibold mb-3 text-gray-800 dark:text-slate-100 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-blue-600 rounded-full" /> Categories
-            </h3>
-            <ul className="space-y-2">
-              <li>
-                <button
-                  type="button"
-                  onClick={() => updateParams({ category: '' })}
-                  className={`block w-full text-center text-sm font-medium rounded-lg border px-3 py-2 transition-all ${
-                    !category
-                      ? 'bg-gray-900 text-white border-gray-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100'
-                      : 'text-gray-700 border-gray-300 hover:bg-gray-100 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  All
-                </button>
-              </li>
-              {categories.map((c) => (
-                <motion.li key={c.slug} variants={itemVariants}>
-                  <button
-                    type="button"
-                    onClick={() => updateParams({ category: c.slug })}
-                    className={`block w-full text-center text-sm font-medium rounded-lg border px-3 py-2 transition-all ${
-                      category === c.slug
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'text-gray-700 border-gray-300 hover:bg-gray-100 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-800'
-                    }`}
+            {/* 移动端：可展开/收起的分类菜单 */}
+            <div className="md:hidden">
+              <button
+                type="button"
+                onClick={() => setCategoriesOpen((prev) => !prev)}
+                className="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 dark:border-slate-700 dark:bg-black dark:text-slate-100"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
+                  Categories
+                </span>
+                <FiChevronDown
+                  className={`w-4 h-4 transition-transform ${categoriesOpen ? 'rotate-180' : 'rotate-0'}`}
+                />
+              </button>
+              <AnimatePresence initial={false}>
+                {categoriesOpen && (
+                  <motion.div
+                    key="mobile-categories"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className="overflow-hidden mt-3"
                   >
-                    {c.name}
-                  </button>
-                </motion.li>
-              ))}
-            </ul>
+                    {renderCategoriesList()}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* 桌面端：始终显示分类列表 */}
+            <div className="hidden md:block">
+              <h3 className="font-semibold mb-3 text-gray-800 dark:text-slate-100 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-600 rounded-full" /> Categories
+              </h3>
+              {renderCategoriesList()}
+            </div>
           </motion.section>
         </motion.aside>
 
         <motion.section variants={itemVariants} className="md:col-span-9">
-          {posts.length === 0 ? (
+          {posts.length === 0 && (q || category) ? (
             <motion.div
               variants={itemVariants}
               className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 dark:border-slate-800 dark:bg-black dark:text-slate-300"

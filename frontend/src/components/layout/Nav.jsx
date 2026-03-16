@@ -70,6 +70,17 @@ const navItems = [
   { label: 'Login', href: '/admin' },
 ]
 
+const getMobileTitle = (path) => {
+  if (!path || path === '/') return ''
+  if (path.startsWith('/blog')) return 'Blog'
+  if (path.startsWith('/events')) return 'Events'
+  if (path.startsWith('/workshops')) return 'Workshops'
+  if (path.startsWith('/courses')) return 'Courses'
+  if (path.startsWith('/newsletter')) return 'Newsletter'
+  if (path.startsWith('/contact')) return 'Contact'
+  return ''
+}
+
 function NavLinkItem({ item, theme, isMobile, onClick }) {
   const baseClass = theme.simpleLinkBase
   const activeClass = theme.simpleLinkActive
@@ -111,6 +122,7 @@ export function Nav() {
   // 全站统一使用深色导航样式
   const theme = useMemo(() => NAV_THEMES.dark, [])
   const isHome = location.pathname === '/'
+  const mobileTitle = getMobileTitle(location.pathname)
   const desktopItems = useMemo(() => navItems.filter((item) => item.label !== 'Login'), [])
 
   useEffect(() => {
@@ -204,8 +216,8 @@ export function Nav() {
         </div>
       </nav>
 
-      {/* 移动端顶部菜单按钮容器（仅在菜单关闭时显示） */}
-      {!mobileOpen && (
+      {/* 移动端首页：使用悬浮菜单按钮 */}
+      {!mobileOpen && isHome && (
         <div className="fixed top-6 right-6 md:hidden z-[80]">
           <button
             type="button"
@@ -217,6 +229,30 @@ export function Nav() {
             <FiMenu className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
+      )}
+
+      {/* 移动端非首页：将按钮放进 Header 容器内，菜单展开时高度保持不变 */}
+      {!isHome && mobileTitle && (
+        <header className="md:hidden sticky top-0 z-[50] bg-gray-50/95 dark:bg-black/90 backdrop-blur border-b border-gray-200 dark:border-slate-800">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <h1 className="text-base font-semibold tracking-tight text-gray-900 dark:text-slate-50">
+              {mobileTitle}
+            </h1>
+            <button
+              type="button"
+              onClick={() => {
+                if (!mobileOpen) setMobileOpen(true)
+              }}
+              className={`w-10 h-10 flex items-center justify-center rounded-xl border border-white/40 bg-black text-white shadow-md transition-transform hover:scale-110 hover:bg-white hover:text-slate-900 ${
+                mobileOpen ? 'opacity-0 pointer-events-none shadow-none border-transparent bg-transparent hover:scale-100' : 'active:scale-[0.95]'
+              }`}
+              aria-label="Open menu"
+              aria-expanded={mobileOpen}
+            >
+              <FiMenu className="w-5 h-5" aria-hidden="true" />
+            </button>
+          </div>
+        </header>
       )}
 
       <div
